@@ -17,6 +17,10 @@ public class EnvironmentBuilder : MonoBehaviour
     public Texture2D roofTexture;
     public Texture2D barkTexture;
 
+    [Header("Shaders (Ensures URP Shaders are not stripped in Build!)")]
+    public Shader simpleLitShader;
+    public Shader transparentShader;
+
     [Header("Realistic Materials")]
     private Material farmlandMaterial;
     private Material oceanMaterial;
@@ -698,11 +702,14 @@ public class EnvironmentBuilder : MonoBehaviour
 
     private Material CreateStandardMaterial(Texture2D tex, Color color, string name)
     {
-        Shader shader = Shader.Find("Universal Render Pipeline/Simple Lit");
+        Shader shader = simpleLitShader != null ? simpleLitShader : Shader.Find("Universal Render Pipeline/Simple Lit");
         if (shader == null) shader = Shader.Find("Standard");
         if (shader == null) shader = Shader.Find("Diffuse");
+        if (shader == null) shader = Shader.Find("Unlit/Texture");
 
-        Material mat = new Material(shader);
+        // Safe fallback to prevent ArgumentNullException if all shader finds fail on mobile devices
+        Shader finalShader = shader != null ? shader : Shader.Find("Hidden/InternalErrorShader");
+        Material mat = new Material(finalShader);
         mat.name = name;
         if (tex != null)
         {
@@ -713,48 +720,56 @@ public class EnvironmentBuilder : MonoBehaviour
             mat.color = color;
         }
 
-        if (shader.name == "Standard" || shader.name.Contains("Simple Lit"))
+        if (shader != null)
         {
-            mat.SetFloat("_Glossiness", 0.0f); // default low gloss
+            if (shader.name == "Standard" || shader.name.Contains("Simple Lit"))
+            {
+                if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", 0.0f);
+            }
         }
         return mat;
     }
 
     private Material CreateTransparentMaterial(Texture2D tex, string name)
     {
-        Shader shader = Shader.Find("Universal Render Pipeline/Simple Lit");
-        bool isURP = (shader != null);
+        Shader shader = transparentShader != null ? transparentShader : Shader.Find("Universal Render Pipeline/Simple Lit");
         if (shader == null) shader = Shader.Find("Standard");
         if (shader == null) shader = Shader.Find("Unlit/Transparent");
 
-        Material mat = new Material(shader);
+        // Safe fallback to prevent ArgumentNullException if all shader finds fail on mobile devices
+        Shader finalShader = shader != null ? shader : Shader.Find("Hidden/InternalErrorShader");
+        Material mat = new Material(finalShader);
         mat.name = name;
         mat.mainTexture = tex;
 
-        if (isURP)
+        if (shader != null)
         {
-            // Setup URP transparent rendering
-            mat.SetFloat("_Blend", 0.0f); // Alpha blend
-            mat.SetOverrideTag("RenderType", "Transparent");
-            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            mat.SetInt("_ZWrite", 0);
-            mat.DisableKeyword("_ALPHATEST_ON");
-            mat.EnableKeyword("_ALPHABLEND_ON");
-            mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
-        }
-        else if (shader.name == "Standard")
-        {
-            // Setup Standard transparent rendering
-            mat.SetFloat("_Mode", 3.0f); // Transparent
-            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
-            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            mat.SetInt("_ZWrite", 0);
-            mat.DisableKeyword("_ALPHATEST_ON");
-            mat.DisableKeyword("_ALPHABLEND_ON");
-            mat.EnableKeyword("_ALPHAPREMULTIPLY_ON");
-            mat.renderQueue = 3000;
+            bool isURP = shader.name.Contains("Simple Lit");
+            if (isURP)
+            {
+                // Setup URP transparent rendering
+                if (mat.HasProperty("_Blend")) mat.SetFloat("_Blend", 0.0f); // Alpha blend
+                mat.SetOverrideTag("RenderType", "Transparent");
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetInt("_ZWrite", 0);
+                mat.DisableKeyword("_ALPHATEST_ON");
+                mat.EnableKeyword("_ALPHABLEND_ON");
+                mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+                mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            }
+            else if (shader.name == "Standard" || shader.name.Contains("Transparent"))
+            {
+                // Setup Standard transparent rendering
+                if (mat.HasProperty("_Mode")) mat.SetFloat("_Mode", 3.0f); // Transparent
+                mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
+                mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                mat.SetInt("_ZWrite", 0);
+                mat.DisableKeyword("_ALPHATEST_ON");
+                mat.DisableKeyword("_ALPHABLEND_ON");
+                mat.EnableKeyword("_ALPHAPREMULTIPLY_ON");
+                mat.renderQueue = 3000;
+            }
         }
         return mat;
     }

@@ -123,7 +123,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &1111741338
+--- !u!1 &1778343815
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -131,8 +131,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 1111741340}
-  - component: {fileID: 1111741339}
+  - component: {fileID: 1778343817}
+  - component: {fileID: 1778343816}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -140,13 +140,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1111741339
+--- !u!114 &1778343816
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1111741338}
+  m_GameObject: {fileID: 1778343815}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 49a1ffb6095c77844af174d2122d07bb, type: 3}
@@ -160,13 +160,15 @@ MonoBehaviour:
   wallTexture: {fileID: 2800000, guid: 9a14c70d2eb4f0045856466dc9d08023, type: 3}
   roofTexture: {fileID: 2800000, guid: 791e16ad5d8848441b9334a4a707bbe4, type: 3}
   barkTexture: {fileID: 2800000, guid: e532ce7b5c9b21049a9b13314a976260, type: 3}
---- !u!4 &1111741340
+  simpleLitShader: {fileID: 4800000, guid: 8d2bb70cbf9db8d4da26e15b26e74248, type: 3}
+  transparentShader: {fileID: 4800000, guid: 8d2bb70cbf9db8d4da26e15b26e74248, type: 3}
+--- !u!4 &1778343817
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1111741338}
+  m_GameObject: {fileID: 1778343815}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -179,4 +181,4 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 1111741340}
+  - {fileID: 1778343817}

@@ -27,6 +27,13 @@ public class BuildScript
         builder.roofTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/house_roof.png");
         builder.barkTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/bark_texture.png");
 
+        // Find and assign URP/Standard shaders to prevent shader stripping in mobile builds
+        builder.simpleLitShader = Shader.Find("Universal Render Pipeline/Simple Lit");
+        if (builder.simpleLitShader == null) builder.simpleLitShader = Shader.Find("Standard");
+
+        builder.transparentShader = Shader.Find("Universal Render Pipeline/Simple Lit");
+        if (builder.transparentShader == null) builder.transparentShader = Shader.Find("Unlit/Transparent");
+
         // 3. Save the scene
         string scenePath = "Assets/Scenes/MainScene.unity";
         
