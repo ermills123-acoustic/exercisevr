@@ -18,6 +18,15 @@ public class BuildScript
         GameObject gm = new GameObject("GameManager");
         EnvironmentBuilder builder = gm.AddComponent<EnvironmentBuilder>();
         builder.generateOnStart = false; // Disable generation on Start since we're baking it now
+
+        // Load and assign textures via AssetDatabase so they are permanently serialized in the scene
+        builder.farmlandTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/farmland_texture.png");
+        builder.oceanTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/ocean_texture.png");
+        builder.roadTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/road_texture.png");
+        builder.wallTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/house_wall.png");
+        builder.roofTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/house_roof.png");
+        builder.barkTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/bark_texture.png");
+
         builder.BuildAll();
 
         // 3. Save the scene
@@ -59,10 +68,14 @@ public class BuildScript
         PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto; // Auto detect highest installed SDK
 
         
-        // Use OpenGLES3 for Galaxy A01 performance
+        // Disable Auto Graphics API so Unity respects our GLES3 selection and compiles without Vulkan (preventing Google Cardboard crash on start!)
+        PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android, false);
         PlayerSettings.SetGraphicsAPIs(BuildTarget.Android, new UnityEngine.Rendering.GraphicsDeviceType[] {
             UnityEngine.Rendering.GraphicsDeviceType.OpenGLES3
         });
+
+        // Set target architectures to both ARMv7 (32-bit for Galaxy A01) and ARM64 (64-bit for compatibility)
+        PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARMv7 | AndroidArchitecture.ARM64;
 
         // 7. Define Output Path
         string buildFolder = "Builds";

@@ -9,6 +9,14 @@ public class EnvironmentBuilder : MonoBehaviour
     public float chunkCellSize = 160.0f; // Width and length of each terrain chunk
     public bool generateOnStart = true;
 
+    [Header("Realistic Textures")]
+    public Texture2D farmlandTexture;
+    public Texture2D oceanTexture;
+    public Texture2D roadTexture;
+    public Texture2D wallTexture;
+    public Texture2D roofTexture;
+    public Texture2D barkTexture;
+
     [Header("Realistic Materials")]
     private Material farmlandMaterial;
     private Material oceanMaterial;
@@ -43,6 +51,9 @@ public class EnvironmentBuilder : MonoBehaviour
     {
         Debug.Log("Generating Infinite Photorealistic VR Pegasus Environment...");
 
+        // Initialize materials first so they are assigned when baking in the Editor!
+        InitializeMaterials();
+
         // 1. Setup lighting
         SetupLighting();
 
@@ -66,26 +77,19 @@ public class EnvironmentBuilder : MonoBehaviour
 
     private void InitializeMaterials()
     {
-        // Load textures from Assets/Textures/ (copied from AI generated assets)
-        Texture2D farmTex = LoadPNG("farmland_texture.png");
-        Texture2D oceanTex = LoadPNG("ocean_texture.png");
-        Texture2D roadTex = LoadPNG("road_texture.png");
-        Texture2D wallTex = LoadPNG("house_wall.png");
-        Texture2D roofTex = LoadPNG("house_roof.png");
-        Texture2D barkTex = LoadPNG("bark_texture.png");
-
         // Fallbacks using procedural texture generators
         Texture2D leavesTex = ProceduralTextureHelper.GenerateLeavesTexture();
 
-        farmlandMaterial = CreateStandardMaterial(farmTex, new Color(0.2f, 0.5f, 0.2f), "FarmlandMat");
-        oceanMaterial = CreateStandardMaterial(oceanTex, new Color(0.0f, 0.2f, 0.6f), "OceanMat");
+        // Use serialized textures or load fallback if not assigned (ensures robust serialization in scene)
+        farmlandMaterial = CreateStandardMaterial(farmlandTexture != null ? farmlandTexture : LoadPNG("farmland_texture.png"), new Color(0.2f, 0.5f, 0.2f), "FarmlandMat");
+        oceanMaterial = CreateStandardMaterial(oceanTexture != null ? oceanTexture : LoadPNG("ocean_texture.png"), new Color(0.0f, 0.2f, 0.6f), "OceanMat");
         // Shimmering glossy water setup
         oceanMaterial.SetFloat("_Glossiness", 0.85f);
         
-        roadMaterial = CreateStandardMaterial(roadTex, new Color(0.5f, 0.5f, 0.5f), "RoadMat");
-        wallMaterial = CreateStandardMaterial(wallTex, new Color(0.8f, 0.8f, 0.8f), "WallMat");
-        roofMaterial = CreateStandardMaterial(roofTex, new Color(0.8f, 0.3f, 0.3f), "RoofMat");
-        barkMaterial = CreateStandardMaterial(barkTex, new Color(0.4f, 0.3f, 0.2f), "BarkMat");
+        roadMaterial = CreateStandardMaterial(roadTexture != null ? roadTexture : LoadPNG("road_texture.png"), new Color(0.5f, 0.5f, 0.5f), "RoadMat");
+        wallMaterial = CreateStandardMaterial(wallTexture != null ? wallTexture : LoadPNG("house_wall.png"), new Color(0.8f, 0.8f, 0.8f), "WallMat");
+        roofMaterial = CreateStandardMaterial(roofTexture != null ? roofTexture : LoadPNG("house_roof.png"), new Color(0.8f, 0.3f, 0.3f), "RoofMat");
+        barkMaterial = CreateStandardMaterial(barkTexture != null ? barkTexture : LoadPNG("bark_texture.png"), new Color(0.4f, 0.3f, 0.2f), "BarkMat");
         leavesMaterial = CreateStandardMaterial(leavesTex, new Color(0.1f, 0.5f, 0.1f), "LeavesMat");
 
         // Generate photorealistic layered Pegasus body part textures
