@@ -6,7 +6,7 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/ConcertStageScene.unity
-    guid: 11111111111111111111111111111111
+    path: Assets/Scenes/MainScene.unity
+    guid: 70a13cb652800414f89a68dee34a34ca
   m_configObjects:
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: b09a2690904d2774c850444cfba0bb8e, type: 2}
