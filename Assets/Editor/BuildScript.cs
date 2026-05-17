@@ -102,10 +102,26 @@ public class BuildScript
         
         var report = BuildPipeline.BuildPlayer(buildPlayerOptions);
         var summary = report.summary;
-
         if (summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded)
         {
             Debug.Log($"Build succeeded! File size: {summary.totalSize} bytes. APK saved to {apkPath}");
+            
+            // Post-build: Copy to Desktop/Builds folder for maximum user visibility!
+            try
+            {
+                string desktopBuildsFolder = "C:/Users/beaum/Desktop/Builds";
+                if (!System.IO.Directory.Exists(desktopBuildsFolder))
+                {
+                    System.IO.Directory.CreateDirectory(desktopBuildsFolder);
+                }
+                string destApkPath = System.IO.Path.Combine(desktopBuildsFolder, "PegasusVR.apk");
+                System.IO.File.Copy(apkPath, destApkPath, true);
+                Debug.Log($"Successfully copied APK to Desktop Builds folder: {destApkPath}");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"Failed to copy APK to Desktop Builds folder: {ex.Message}");
+            }
         }
         else if (summary.result == UnityEditor.Build.Reporting.BuildResult.Failed)
         {
