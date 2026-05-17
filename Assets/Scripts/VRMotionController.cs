@@ -61,6 +61,10 @@ public class VRMotionController : MonoBehaviour
     private float groundHeight = 0.0f;
     private bool isGrounded = true;
 
+    // Water splash buoyancy landing
+    private float entryWaterTime = -1.0f;
+    private float splashSubmergeDepth = 0.0f;
+
     // Fallback gyro fields
     private bool gyroEnabled = false;
 
@@ -187,18 +191,22 @@ public class VRMotionController : MonoBehaviour
 
     private void UpdateTerrainElevation()
     {
-        // Sample height of infinite terrain dynamically using the same Perlin noise formula
         float px = transform.position.x;
         float pz = transform.position.z;
         
-        // Farmland hills terrain formula
-        if (px < 0f)
+        if (px < -5.0f)
         {
-            groundHeight = Mathf.PerlinNoise(px * 0.006f, pz * 0.006f) * 12.0f;
+            groundHeight = ProceduralTextureHelper.GetTerrainHeight(px, pz);
+        }
+        else if (px < 15.0f)
+        {
+            float t = Mathf.InverseLerp(-5.0f, 15.0f, px);
+            float landH = ProceduralTextureHelper.GetTerrainHeight(px, pz);
+            groundHeight = Mathf.Lerp(landH, -3f, t);
         }
         else
         {
-            groundHeight = -10.0f; // ocean channel is deep
+            groundHeight = -15.0f;
         }
     }
 
@@ -214,6 +222,12 @@ public class VRMotionController : MonoBehaviour
         {
             if (currentY <= seaLevel + 0.1f && transform.position.x >= -5.0f)
             {
+                if (currentState != MovementState.Swimming)
+                {
+                    // Transition to swimming! Plunge and submerge based on downward vertical speed
+                    entryWaterTime = Time.time;
+                    splashSubmergeDepth = Mathf.Clamp(Mathf.Abs(currentVerticalSpeed) * 0.8f, 1.5f, 4.0f);
+                }
                 currentState = MovementState.Swimming;
             }
             else if (currentY <= groundHeight + 0.1f && transform.position.x < -5.0f)
@@ -246,7 +260,7 @@ public class VRMotionController : MonoBehaviour
 
         if (Mathf.Abs(rollAngle) > rollDeadzone)
         {
-            float steerAmount = -rollAngle * steerSensitivity * Time.deltaTime;
+            float steerAmount = rollAngle * steerSensitivity * Time.deltaTime; // UN-INVERTED steering direction
             transform.Rotate(Vector3.up, steerAmount, Space.World);
         }
     }
@@ -268,9 +282,31 @@ public class VRMotionController : MonoBehaviour
 
             case MovementState.Swimming:
                 targetSpeed = swimSpeed;
-                // Bob gently on the ocean wave level
-                float targetSwimY = seaLevel + Mathf.Sin(Time.time * waterBobbingSpeed) * waterBobbingAmp;
-                transform.position = new Vector3(transform.position.x, Mathf.Lerp(transform.position.y, targetSwimY, Time.deltaTime * 5f), transform.position.z);
+                
+                // Realistic buoyancy submerge and resurface simulation
+                float swimY = seaLevel;
+                if (entryWaterTime > 0.0f)
+                {
+                    float elapsed = Time.time - entryWaterTime;
+                    if (elapsed < 1.5f)
+                    {
+                        // Buoyancy plunge curve: plunges down to splashSubmergeDepth and resurfaces smoothly
+                        float submergeFactor = Mathf.Sin((elapsed / 1.5f) * Mathf.PI); // starts at 0, peaks at 1.0, ends at 0
+                        float currentDepth = splashSubmergeDepth * submergeFactor;
+                        swimY = seaLevel - currentDepth;
+                    }
+                    else
+                    {
+                        entryWaterTime = -1.0f; // Finished buoyancy splash sequence
+                    }
+                }
+                
+                // Float with nice ocean wave bobbing (submerged slightly by 0.5m for realism)
+                float waveBob = Mathf.Sin(Time.time * waterBobbingSpeed) * waterBobbingAmp;
+                float targetSwimY = swimY - 0.5f + waveBob;
+                
+                // Lerp height smoothly representing water displacement forces
+                transform.position = new Vector3(transform.position.x, Mathf.Lerp(transform.position.y, targetSwimY, Time.deltaTime * 3f), transform.position.z);
                 targetVertSpeed = 0f;
                 break;
 
@@ -359,17 +395,18 @@ public class VRMotionController : MonoBehaviour
 
             if (currentState == MovementState.Walking)
             {
-                gallopSpeed = 8.0f;
+                gallopSpeed = 6.0f;
+                maxLegAngle = 20.0f;
             }
             else if (currentState == MovementState.Flying)
             {
-                gallopSpeed = 12.0f;
+                gallopSpeed = 10.0f;
                 maxLegAngle = 35.0f;
             }
             else if (currentState == MovementState.Swimming)
             {
-                gallopSpeed = 4.0f;
-                maxLegAngle = 15.0f;
+                gallopSpeed = 6.0f;
+                maxLegAngle = 30.0f;
             }
 
             if (gallopSpeed > 0f)

@@ -77,6 +77,17 @@ public class EnvironmentBuilder : MonoBehaviour
         {
             StreamChunks(false);
         }
+
+        // Animate the main texture offset of the ocean material to create realistic moving water ripples
+        if (oceanMaterial != null)
+        {
+            float offset = Time.time * 0.02f;
+            Vector2 uvOffset = new Vector2(offset, offset * 0.7f);
+            if (oceanMaterial.HasProperty("_BaseMap"))
+                oceanMaterial.SetTextureOffset("_BaseMap", uvOffset);
+            else if (oceanMaterial.HasProperty("_MainTex"))
+                oceanMaterial.SetTextureOffset("_MainTex", uvOffset);
+        }
     }
 
     private void InitializeMaterials()
@@ -106,6 +117,7 @@ public class EnvironmentBuilder : MonoBehaviour
         pegasusHeadMat = CreateTransparentMaterial(pegHeadTex, "PegasusHeadMat");
         pegasusWingMat = CreateTransparentMaterial(pegWingTex, "PegasusWingMat");
         pegasusLegMat = CreateTransparentMaterial(pegLegTex, "PegasusLegMat");
+        pegasusBodyMat = CreateStandardMaterial(null, new Color(0.95f, 0.95f, 0.96f), "PegasusBodyMat");
     }
 
     private void SetupLighting()
@@ -135,10 +147,10 @@ public class EnvironmentBuilder : MonoBehaviour
         playerRig.transform.position = new Vector3(-80.0f, 15.0f, 40.0f);
         VRMotionController motion = playerRig.AddComponent<VRMotionController>();
 
-        // 2. Create VR Camera Rig
+        // 2. Create VR Camera Rig representing rider's seat
         GameObject cameraRigGo = new GameObject("VR_Camera_Rig");
         cameraRigGo.transform.parent = playerRig.transform;
-        cameraRigGo.transform.localPosition = new Vector3(0.0f, 0.8f, -0.6f);
+        cameraRigGo.transform.localPosition = new Vector3(0.0f, 0.6f, -0.5f); // Rider's saddle seat
         cameraRigGo.transform.localRotation = Quaternion.identity;
         motion.cameraRig = cameraRigGo.transform;
 
@@ -173,51 +185,61 @@ public class EnvironmentBuilder : MonoBehaviour
         pegasus.transform.localPosition = Vector3.zero;
         pegasus.transform.localRotation = Quaternion.identity;
 
-        // Neck and Head Quad (child of Camera Rig so it stays perfectly oriented in front of rider view)
+        // Neck and Head Quad (parented to PLAYER RIG so it points forward, allowing independent camera looking in VR)
         GameObject neckHead = GameObject.CreatePrimitive(PrimitiveType.Quad);
         neckHead.name = "PegasusHeadNeck";
         Destroy(neckHead.GetComponent<Collider>()); // No self collision
-        neckHead.transform.parent = cameraRigGo.transform;
-        // Positioned forward and slightly down, facing camera
-        neckHead.transform.localPosition = new Vector3(0.0f, -0.4f, 1.3f);
-        neckHead.transform.localRotation = Quaternion.identity; 
-        neckHead.transform.localScale = new Vector3(1.6f, 1.6f, 1.0f);
+        neckHead.transform.parent = playerRig.transform;
+        // Positioned forward, slightly down, with a beautiful realistic forward tilt
+        neckHead.transform.localPosition = new Vector3(0.0f, 0.2f, 0.8f);
+        neckHead.transform.localRotation = Quaternion.Euler(15f, 0f, 0f); 
+        neckHead.transform.localScale = new Vector3(1.2f, 1.2f, 1.0f);
         neckHead.GetComponent<Renderer>().sharedMaterial = pegasusHeadMat;
 
-        // Left Wing Anchor & Quad
+        // Pegasus Back/Body Quad (placed flat underneath rider representing the horse's shoulders)
+        GameObject pegasusBack = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        pegasusBack.name = "PegasusBack";
+        Destroy(pegasusBack.GetComponent<Collider>());
+        pegasusBack.transform.parent = playerRig.transform;
+        pegasusBack.transform.localPosition = new Vector3(0.0f, -0.3f, 0.0f);
+        pegasusBack.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // Lay flat horizontally
+        pegasusBack.transform.localScale = new Vector3(1.0f, 2.0f, 1.0f);
+        pegasusBack.GetComponent<Renderer>().sharedMaterial = pegasusBodyMat;
+
+        // Left Wing Anchor & Quad (positioned wider for clear downward left viewing)
         GameObject lWingAnchor = new GameObject("LeftWingAnchor");
         lWingAnchor.transform.parent = playerRig.transform;
-        lWingAnchor.transform.localPosition = new Vector3(-0.8f, 0.2f, 0.0f);
+        lWingAnchor.transform.localPosition = new Vector3(-0.9f, 0.3f, 0.0f);
         motion.leftWingAnchor = lWingAnchor.transform;
 
         GameObject leftWing = GameObject.CreatePrimitive(PrimitiveType.Quad);
         leftWing.name = "LeftWingQuad";
         Destroy(leftWing.GetComponent<Collider>());
         leftWing.transform.parent = lWingAnchor.transform;
-        leftWing.transform.localPosition = new Vector3(-1.6f, 0.0f, 0.4f);
+        leftWing.transform.localPosition = new Vector3(-1.4f, 0.0f, 0.3f);
         leftWing.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // Lay flat
-        leftWing.transform.localScale = new Vector3(3.2f, 3.2f, 1.0f);
+        leftWing.transform.localScale = new Vector3(2.8f, 2.8f, 1.0f);
         leftWing.GetComponent<Renderer>().sharedMaterial = pegasusWingMat;
 
-        // Right Wing Anchor & Quad
+        // Right Wing Anchor & Quad (positioned wider for clear downward right viewing)
         GameObject rWingAnchor = new GameObject("RightWingAnchor");
         rWingAnchor.transform.parent = playerRig.transform;
-        rWingAnchor.transform.localPosition = new Vector3(0.8f, 0.2f, 0.0f);
+        rWingAnchor.transform.localPosition = new Vector3(0.9f, 0.3f, 0.0f);
         motion.rightWingAnchor = rWingAnchor.transform;
 
         GameObject rightWing = GameObject.CreatePrimitive(PrimitiveType.Quad);
         rightWing.name = "RightWingQuad";
         Destroy(rightWing.GetComponent<Collider>());
         rightWing.transform.parent = rWingAnchor.transform;
-        rightWing.transform.localPosition = new Vector3(1.6f, 0.0f, 0.4f);
+        rightWing.transform.localPosition = new Vector3(1.4f, 0.0f, 0.3f);
         rightWing.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-        rightWing.transform.localScale = new Vector3(-3.2f, 3.2f, 1.0f); // X-Mirror
+        rightWing.transform.localScale = new Vector3(-2.8f, 2.8f, 1.0f); // X-Mirror
         rightWing.GetComponent<Renderer>().sharedMaterial = pegasusWingMat;
 
-        // Left Front Leg Anchor & Quad
+        // Left Front Leg Anchor & Quad (moved slightly wider and down for perfect visibility and pedaling)
         GameObject lLegAnchor = new GameObject("LeftLegAnchor");
         lLegAnchor.transform.parent = playerRig.transform;
-        lLegAnchor.transform.localPosition = new Vector3(-0.4f, -0.4f, 0.5f);
+        lLegAnchor.transform.localPosition = new Vector3(-0.4f, -0.6f, 0.6f);
         motion.leftLegAnchor = lLegAnchor.transform;
 
         GameObject leftLeg = GameObject.CreatePrimitive(PrimitiveType.Quad);
@@ -232,7 +254,7 @@ public class EnvironmentBuilder : MonoBehaviour
         // Right Front Leg Anchor & Quad
         GameObject rLegAnchor = new GameObject("RightLegAnchor");
         rLegAnchor.transform.parent = playerRig.transform;
-        rLegAnchor.transform.localPosition = new Vector3(0.4f, -0.4f, 0.5f);
+        rLegAnchor.transform.localPosition = new Vector3(0.4f, -0.6f, 0.6f);
         motion.rightLegAnchor = rLegAnchor.transform;
 
         GameObject rightLeg = GameObject.CreatePrimitive(PrimitiveType.Quad);
@@ -344,7 +366,7 @@ public class EnvironmentBuilder : MonoBehaviour
 
                 Vector3 localPos = new Vector3(i * step + step * 0.5f, 0f, j * step + step * 0.5f);
                 Vector3 worldPos = parent.transform.position + localPos;
-                worldPos.y = Mathf.PerlinNoise(worldPos.x * 0.006f, worldPos.z * 0.006f) * 12.0f;
+                worldPos.y = ProceduralTextureHelper.GetTerrainHeight(worldPos.x, worldPos.z);
                 localPos.y = worldPos.y;
 
                 int rand = Mathf.Abs((cx + cz + i + j) % 5);
@@ -433,12 +455,12 @@ public class EnvironmentBuilder : MonoBehaviour
                 float py = 0.0f;
                 if (px < -5.0f) // Farmland hills
                 {
-                    py = Mathf.PerlinNoise(px * 0.006f, pz * 0.006f) * 12.0f;
+                    py = ProceduralTextureHelper.GetTerrainHeight(px, pz);
                 }
                 else if (px < 15.0f) // Shoreline smooth slope transition
                 {
                     float t = Mathf.InverseLerp(-5.0f, 15.0f, px);
-                    float landH = Mathf.PerlinNoise(px * 0.006f, pz * 0.006f) * 12.0f;
+                    float landH = ProceduralTextureHelper.GetTerrainHeight(px, pz);
                     py = Mathf.Lerp(landH, -3f, t);
                 }
                 else // deep seabed

@@ -30,7 +30,7 @@ public static class ProceduralTextureHelper
 
     public static Texture2D GeneratePegasusHeadTexture()
     {
-        int w = 256; // Optimized from 512 to 256 (4x fewer pixels)
+        int w = 256; 
         int h = 256;
         Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
         
@@ -38,12 +38,13 @@ public static class ProceduralTextureHelper
             for (int y = 0; y < h; y++)
                 tex.SetPixel(x, y, Color.clear);
 
-        Color baseWhite = new Color(0.98f, 0.98f, 0.98f);
-        Color shadowColor = new Color(0.82f, 0.85f, 0.9f);
-        Color maneBlue = new Color(0.5f, 0.75f, 0.95f);
-        Color maneHighlight = new Color(0.85f, 0.95f, 1f);
+        Color baseWhite = new Color(0.95f, 0.95f, 0.96f); // Light grey/white CGTrader base coat
+        Color shadowColor = new Color(0.80f, 0.82f, 0.85f);
+        Color stripeColor = new Color(0.72f, 0.75f, 0.80f); // Polygonal/faceted light-grey stripe
+        Color maneGrey = new Color(0.85f, 0.86f, 0.88f); // Cropped grey/white mane
+        Color maneHighlight = new Color(0.98f, 0.98f, 1f);
 
-        // 1. Draw Neck (Trapezoid from base to mid-height)
+        // 1. Draw Neck (Trapezoid from base to mid-height) with Zebra Horizontal Facet Striping
         int neckBaseW = 90;
         int neckTopW = 50;
         int neckH = 120;
@@ -54,6 +55,9 @@ public static class ProceduralTextureHelper
             float t = (float)(y - neckYOffset) / neckH;
             float currentWidth = Mathf.Lerp(neckBaseW, neckTopW, t);
             
+            // Alternating horizontal zebra stripes
+            bool isStripe = (Mathf.Sin(y * 0.15f) > 0.4f);
+
             for (int x = 0; x < w; x++)
             {
                 float dx = x - (w / 2f);
@@ -61,8 +65,14 @@ public static class ProceduralTextureHelper
                 {
                     float lateralFactor = Mathf.Abs(dx) / (currentWidth * 0.5f);
                     float shading = Mathf.Cos(lateralFactor * Mathf.PI * 0.5f);
-                    Color col = Color.Lerp(shadowColor, baseWhite, 0.6f + shading * 0.4f);
-                    tex.SetPixel(x, y, col);
+                    
+                    Color baseCol = Color.Lerp(shadowColor, baseWhite, 0.6f + shading * 0.4f);
+                    if (isStripe)
+                    {
+                        baseCol = Color.Lerp(stripeColor, baseCol, 0.4f); // blend in the beautiful stripe
+                    }
+                    
+                    tex.SetPixel(x, y, baseCol);
                 }
             }
         }
@@ -84,31 +94,39 @@ public static class ProceduralTextureHelper
                 {
                     float depth = 1f - distSq;
                     Color col = Color.Lerp(shadowColor, baseWhite, 0.7f + depth * 0.3f);
+                    
+                    // Draw a realistic dark grey/black muzzle at the lower/front of the face
+                    float muzzleDist = Vector2.Distance(new Vector2(x, y), new Vector2(headCenter.x, headCenter.y - 18f));
+                    if (muzzleDist < 14f)
+                    {
+                        col = Color.Lerp(new Color(0.2f, 0.2f, 0.22f), col, muzzleDist / 14f); // dark muzzle blend
+                    }
+
                     tex.SetPixel(x, y, col);
                 }
             }
         }
 
-        // 3. Draw Ears (Pointed upright shapes)
+        // 3. Draw Ears with Prominent Dark Tips
         DrawEar(tex, new Vector2(w / 2f - 15f, headCenter.y + 20f), 22f, 8f, 15f * Mathf.Deg2Rad, baseWhite, shadowColor);
         DrawEar(tex, new Vector2(w / 2f + 15f, headCenter.y + 20f), 22f, 8f, -15f * Mathf.Deg2Rad, baseWhite, shadowColor);
 
-        // 4. Draw Flowing Mane
-        for (int i = 0; i < 15; i++) // Reduced from 30 to 15
+        // 4. Draw Flowing/Cropped Mane
+        for (int i = 0; i < 15; i++) 
         {
             float maneY = neckYOffset + 10f + (i * 8f);
-            float offsetAmp = 10f + Mathf.Sin(maneY * 0.1f) * 8f;
+            float offsetAmp = 10f + Mathf.Sin(maneY * 0.1f) * 6f;
             Vector2 start = new Vector2(w / 2f, maneY);
-            Vector2 end = new Vector2(w / 2f + offsetAmp, maneY - 8f - Random.Range(0f, 5f));
+            Vector2 end = new Vector2(w / 2f + offsetAmp, maneY - 4f - Random.Range(0f, 3f));
             
-            DrawHairStrand(tex, start, end, 4f, maneBlue, maneHighlight);
+            DrawHairStrand(tex, start, end, 3.5f, maneGrey, maneHighlight);
         }
 
-        // 5. Soft Eyes
+        // 5. Dark Soft Eyes
         if ((int)(headCenter.x - headRadiusX + 8f) < w)
-            tex.SetPixel((int)(headCenter.x - headRadiusX + 8f), (int)(headCenter.y), Color.black);
+            tex.SetPixel((int)(headCenter.x - headRadiusX + 8f), (int)(headCenter.y), new Color(0.1f, 0.1f, 0.12f));
         if ((int)(headCenter.x + headRadiusX - 8f) < w)
-            tex.SetPixel((int)(headCenter.x + headRadiusX - 8f), (int)(headCenter.y), Color.black);
+            tex.SetPixel((int)(headCenter.x + headRadiusX - 8f), (int)(headCenter.y), new Color(0.1f, 0.1f, 0.12f));
 
         tex.Apply();
         return tex;
@@ -137,6 +155,13 @@ public static class ProceduralTextureHelper
                     {
                         float innerFactor = Mathf.Abs(ry) / (widthAtLength * 0.5f);
                         Color col = Color.Lerp(shadowCol, mainCol, 0.7f - innerFactor * 0.3f);
+                        
+                        // Prominent dark ear tips like CGTrader Pegasus
+                        if (rx > length * 0.7f)
+                        {
+                            col = Color.Lerp(col, new Color(0.15f, 0.15f, 0.17f), (rx - length * 0.7f) / (length * 0.3f));
+                        }
+
                         tex.SetPixel(x, y, col);
                     }
                 }
@@ -146,12 +171,12 @@ public static class ProceduralTextureHelper
 
     private static void DrawHairStrand(Texture2D tex, Vector2 start, Vector2 end, float width, Color startCol, Color endCol)
     {
-        int steps = 20; // Reduced from 50
+        int steps = 15; 
         for (int i = 0; i <= steps; i++)
         {
             float t = (float)i / steps;
             Vector2 pos = Vector2.Lerp(start, end, t);
-            pos.x += Mathf.Sin(t * Mathf.PI) * 4f;
+            pos.x += Mathf.Sin(t * Mathf.PI) * 2f;
 
             float currentRadius = width * 0.5f * (1.0f - t * 0.8f);
             Color col = Color.Lerp(startCol, endCol, t);
@@ -177,7 +202,7 @@ public static class ProceduralTextureHelper
 
     public static Texture2D GeneratePegasusWingTexture()
     {
-        int w = 256; // Optimized from 512 to 256 (4x fewer pixels)
+        int w = 256; 
         int h = 256;
         Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
         
@@ -190,55 +215,55 @@ public static class ProceduralTextureHelper
 
         // Highly optimized feather grid layout (fewer feathers and scaled down bounding boxes for speed!)
         
-        // Row 1: Primary flight feathers
-        for (int i = 0; i < 6; i++) // Reduced from 12
+        // Row 1: Primary flight feathers (beautiful dark-to-light gradient, type 0)
+        for (int i = 0; i < 6; i++) 
         {
             float progress = i / 5f;
             float angle = Mathf.Lerp(-20f, -65f, progress) * Mathf.Deg2Rad;
             Vector2 origin = new Vector2(25f + progress * 100f, 160f - progress * 50f);
             float length = Mathf.Lerp(130f, 90f, progress);
             float width = Mathf.Lerp(11f, 9f, progress);
-            DrawFeather(tex, origin, length, width, angle, featherColor, featherShadow);
+            DrawFeather(tex, origin, length, width, angle, featherColor, featherShadow, 0);
         }
 
-        // Row 2: Secondary coverts
-        for (int i = 0; i < 8; i++) // Reduced from 15
+        // Row 2: Secondary coverts (type 1)
+        for (int i = 0; i < 8; i++) 
         {
             float progress = i / 7f;
             float angle = Mathf.Lerp(-15f, -60f, progress) * Mathf.Deg2Rad;
             Vector2 origin = new Vector2(30f + progress * 110f, 170f - progress * 40f);
             float length = Mathf.Lerp(85f, 60f, progress);
             float width = 9f;
-            DrawFeather(tex, origin, length, width, angle, featherColor * 0.95f, featherShadow);
+            DrawFeather(tex, origin, length, width, angle, featherColor * 0.95f, featherShadow, 1);
         }
 
-        // Row 3: Greater coverts
-        for (int i = 0; i < 8; i++) // Reduced from 16
+        // Row 3: Greater coverts (type 1)
+        for (int i = 0; i < 8; i++) 
         {
             float progress = i / 7f;
             float angle = Mathf.Lerp(-10f, -55f, progress) * Mathf.Deg2Rad;
             Vector2 origin = new Vector2(35f + progress * 120f, 182f - progress * 35f);
             float length = Mathf.Lerp(55f, 40f, progress);
             float width = 8f;
-            DrawFeather(tex, origin, length, width, angle, featherColor * 0.98f, featherShadow);
+            DrawFeather(tex, origin, length, width, angle, featherColor * 0.98f, featherShadow, 1);
         }
 
-        // Row 4: Lesser coverts
-        for (int i = 0; i < 10; i++) // Reduced from 20
+        // Row 4: Lesser coverts / Shoulder (dark charcoal/brown, type 2)
+        for (int i = 0; i < 10; i++) 
         {
             float progress = i / 9f;
             float angle = Mathf.Lerp(-5f, -50f, progress) * Mathf.Deg2Rad;
             Vector2 origin = new Vector2(40f + progress * 125f, 195f - progress * 30f);
             float length = Mathf.Lerp(30f, 20f, progress);
             float width = 7f;
-            DrawFeather(tex, origin, length, width, angle, Color.white, featherShadow * 1.05f);
+            DrawFeather(tex, origin, length, width, angle, Color.white, featherShadow * 1.05f, 2);
         }
 
         tex.Apply();
         return tex;
     }
 
-    private static void DrawFeather(Texture2D tex, Vector2 origin, float length, float width, float angle, Color baseColor, Color shadowColor)
+    private static void DrawFeather(Texture2D tex, Vector2 origin, float length, float width, float angle, Color baseColor, Color shadowColor, int gradientType)
     {
         float cos = Mathf.Cos(angle);
         float sin = Mathf.Sin(angle);
@@ -269,13 +294,24 @@ public static class ProceduralTextureHelper
                     {
                         float distFromCenter = Mathf.Abs(ry) / (currentWidth * 0.5f);
                         float sideShade = Mathf.Lerp(1.0f, 0.75f, distFromCenter);
-                        float lengthShade = Mathf.Lerp(0.85f, 1.0f, t);
                         
-                        Color c = Color.Lerp(shadowColor, baseColor, sideShade * lengthShade);
-                        
-                        if (Mathf.Abs(ry) < 0.6f)
+                        Color c;
+                        if (gradientType == 0) // Flight feathers: dark charcoal to white gradient!
                         {
-                            c = new Color(0.95f, 0.9f, 0.75f);
+                            c = Color.Lerp(new Color(0.18f, 0.18f, 0.20f), new Color(0.98f, 0.98f, 1.0f), t * sideShade);
+                        }
+                        else if (gradientType == 1) // Mid-coverts: medium grey gradient
+                        {
+                            c = Color.Lerp(new Color(0.28f, 0.28f, 0.30f), new Color(0.85f, 0.85f, 0.90f), t * sideShade);
+                        }
+                        else // Shoulder lesser coverts: solid dark charcoal/brown
+                        {
+                            c = Color.Lerp(new Color(0.20f, 0.18f, 0.18f), new Color(0.32f, 0.30f, 0.30f), t * sideShade);
+                        }
+                        
+                        if (Mathf.Abs(ry) < 0.6f && gradientType == 0)
+                        {
+                            c = new Color(0.95f, 0.9f, 0.75f); // quill
                         }
 
                         float alpha = 1f;
@@ -295,18 +331,20 @@ public static class ProceduralTextureHelper
 
     public static Texture2D GeneratePegasusLegTexture()
     {
-        int w = 128; // Optimized from 256 to 128
-        int h = 256; // Optimized from 512 to 256
+        int w = 128; 
+        int h = 256; 
         Texture2D tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
 
         for (int x = 0; x < w; x++)
             for (int y = 0; y < h; y++)
                 tex.SetPixel(x, y, Color.clear);
 
-        Color baseWhite = new Color(0.97f, 0.97f, 0.98f);
-        Color shadowCol = new Color(0.8f, 0.83f, 0.88f);
-        Color goldHoof = new Color(0.9f, 0.75f, 0.25f);
-        Color goldHoofShadow = new Color(0.6f, 0.45f, 0.1f);
+        Color baseWhite = new Color(0.95f, 0.95f, 0.96f); // Light grey base
+        Color shadowCol = new Color(0.78f, 0.80f, 0.84f);
+        Color stripeColor = new Color(0.68f, 0.70f, 0.75f); // Facet zebra stripe
+        
+        Color darkHoof = new Color(0.12f, 0.12f, 0.14f); // Solid dark grey/black hooves
+        Color darkHoofShadow = new Color(0.06f, 0.06f, 0.08f);
 
         int legCenter = w / 2;
         int startY = 240;
@@ -332,6 +370,7 @@ public static class ProceduralTextureHelper
             }
 
             bool isHoof = (y < endY + 14);
+            bool isStripe = (!isHoof && (Mathf.Sin(y * 0.15f) > 0.6f));
 
             for (int x = (int)(legCenter - width * 0.5f); x <= (int)(legCenter + width * 0.5f); x++)
             {
@@ -343,11 +382,15 @@ public static class ProceduralTextureHelper
                     Color c;
                     if (isHoof)
                     {
-                        c = Color.Lerp(goldHoofShadow, goldHoof, 0.5f + shading * 0.5f);
+                        c = Color.Lerp(darkHoofShadow, darkHoof, 0.5f + shading * 0.5f);
                     }
                     else
                     {
                         c = Color.Lerp(shadowCol, baseWhite, 0.6f + shading * 0.4f);
+                        if (isStripe)
+                        {
+                            c = Color.Lerp(stripeColor, c, 0.4f); // apply dark-grey zebra leg band
+                        }
                     }
 
                     float edgeDist = (width * 0.5f) - Mathf.Abs(x - legCenter);
@@ -364,5 +407,12 @@ public static class ProceduralTextureHelper
 
         tex.Apply();
         return tex;
+    }
+
+    public static float GetTerrainHeight(float x, float z)
+    {
+        // Two-octave Perlin noise for highly detailed, photorealistic farm topography
+        return Mathf.PerlinNoise(x * 0.005f, z * 0.005f) * 14.0f + 
+               Mathf.PerlinNoise(x * 0.02f, z * 0.02f) * 2.5f;
     }
 }
