@@ -53,7 +53,7 @@ public class BuildScript
         // 6. Set Player Settings
         PlayerSettings.companyName = "EddieMills";
         PlayerSettings.productName = "PegasusVR";
-        PlayerSettings.bundleIdentifier = "com.eddiemills.pegasusvr";
+        PlayerSettings.applicationIdentifier = "com.eddiemills.pegasusvr";
         PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
         PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26; // Android 8.0
         PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel33; // Android 13
