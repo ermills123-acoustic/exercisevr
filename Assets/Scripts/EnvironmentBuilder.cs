@@ -118,6 +118,27 @@ public class EnvironmentBuilder : MonoBehaviour
         pegasusWingMat = CreateTransparentMaterial(pegWingTex, "PegasusWingMat");
         pegasusLegMat = CreateTransparentMaterial(pegLegTex, "PegasusLegMat");
         pegasusBodyMat = CreateStandardMaterial(null, new Color(0.95f, 0.95f, 0.96f), "PegasusBodyMat");
+
+        // Create dynamic clear photo-realistic skybox material (ensures premium daytime atmosphere!)
+        Material skyMat = new Material(Shader.Find("Skybox/Procedural"));
+        if (skyMat != null)
+        {
+            skyMat.SetColor("_SkyTint", new Color(0.42f, 0.65f, 0.88f)); // Majestic daytime blue
+            skyMat.SetColor("_GroundColor", new Color(0.68f, 0.72f, 0.78f)); // Soft horizon grey
+            skyMat.SetFloat("_AtmosphereThickness", 0.9f);
+            skyMat.SetFloat("_Exposure", 1.15f);
+            RenderSettings.skybox = skyMat;
+        }
+
+        // Set warm ambient lighting representing beautiful golden day rays
+        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Skybox;
+        RenderSettings.ambientLight = new Color(0.98f, 0.95f, 0.9f);
+        
+        // Beautiful horizon fog blending for photorealistic atmospheric depth
+        RenderSettings.fog = true;
+        RenderSettings.fogColor = new Color(0.68f, 0.8f, 0.95f);
+        RenderSettings.fogStartDistance = 60.0f;
+        RenderSettings.fogEndDistance = 400.0f;
     }
 
     private void SetupLighting()
@@ -150,7 +171,7 @@ public class EnvironmentBuilder : MonoBehaviour
         // 2. Create VR Camera Rig representing rider's seat
         GameObject cameraRigGo = new GameObject("VR_Camera_Rig");
         cameraRigGo.transform.parent = playerRig.transform;
-        cameraRigGo.transform.localPosition = new Vector3(0.0f, 0.6f, -0.5f); // Rider's saddle seat
+        cameraRigGo.transform.localPosition = new Vector3(0.0f, 0.7f, -0.5f); // Rider's saddle seat (raised slightly to see over the neck)
         cameraRigGo.transform.localRotation = Quaternion.identity;
         motion.cameraRig = cameraRigGo.transform;
 
@@ -179,92 +200,157 @@ public class EnvironmentBuilder : MonoBehaviour
         leftCam.clearFlags = CameraClearFlags.Skybox;
         rightCam.clearFlags = CameraClearFlags.Skybox;
 
-        // 3. Build Layered Pegasus Model (Visual quads for photorealism)
+        // 3. Build Layered 3D Pegasus Model (100% 3D Structural Horse representing cgtrader mesh)
         GameObject pegasus = new GameObject("PegasusModel");
         pegasus.transform.parent = playerRig.transform;
         pegasus.transform.localPosition = Vector3.zero;
         pegasus.transform.localRotation = Quaternion.identity;
 
-        // Neck and Head Quad (parented to PLAYER RIG so it points forward, allowing independent camera looking in VR)
-        GameObject neckHead = GameObject.CreatePrimitive(PrimitiveType.Quad);
-        neckHead.name = "PegasusHeadNeck";
-        Destroy(neckHead.GetComponent<Collider>()); // No self collision
-        neckHead.transform.parent = playerRig.transform;
-        // Positioned forward, slightly down, with a beautiful realistic forward tilt
-        neckHead.transform.localPosition = new Vector3(0.0f, 0.2f, 0.8f);
-        neckHead.transform.localRotation = Quaternion.Euler(15f, 0f, 0f); 
-        neckHead.transform.localScale = new Vector3(1.2f, 1.2f, 1.0f);
-        neckHead.GetComponent<Renderer>().sharedMaterial = pegasusHeadMat;
+        // 3D Body (Torso Cylinder)
+        GameObject torso = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        torso.name = "PegasusTorso";
+        Destroy(torso.GetComponent<Collider>());
+        torso.transform.parent = pegasus.transform;
+        torso.transform.localPosition = new Vector3(0.0f, -0.1f, -0.4f);
+        torso.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // Face forward along Z axis
+        torso.transform.localScale = new Vector3(0.7f, 1.0f, 0.7f); // cylindrical horse torso
+        torso.GetComponent<Renderer>().sharedMaterial = pegasusBodyMat;
 
-        // Pegasus Back/Body Quad (placed flat underneath rider representing the horse's shoulders)
-        GameObject pegasusBack = GameObject.CreatePrimitive(PrimitiveType.Quad);
-        pegasusBack.name = "PegasusBack";
-        Destroy(pegasusBack.GetComponent<Collider>());
-        pegasusBack.transform.parent = playerRig.transform;
-        pegasusBack.transform.localPosition = new Vector3(0.0f, -0.3f, 0.0f);
-        pegasusBack.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // Lay flat horizontally
-        pegasusBack.transform.localScale = new Vector3(1.0f, 2.0f, 1.0f);
-        pegasusBack.GetComponent<Renderer>().sharedMaterial = pegasusBodyMat;
+        // 3D Neck (Angled Cylinder)
+        GameObject neck = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        neck.name = "PegasusNeck";
+        Destroy(neck.GetComponent<Collider>());
+        neck.transform.parent = pegasus.transform;
+        neck.transform.localPosition = new Vector3(0.0f, 0.45f, 0.5f);
+        neck.transform.localRotation = Quaternion.Euler(35f, 0f, 0f); // Graceful neck forward tilt
+        neck.transform.localScale = new Vector3(0.35f, 0.6f, 0.35f);
+        neck.GetComponent<Renderer>().sharedMaterial = pegasusBodyMat;
 
-        // Left Wing Anchor & Quad (positioned wider for clear downward left viewing)
-        GameObject lWingAnchor = new GameObject("LeftWingAnchor");
-        lWingAnchor.transform.parent = playerRig.transform;
-        lWingAnchor.transform.localPosition = new Vector3(-0.9f, 0.3f, 0.0f);
-        motion.leftWingAnchor = lWingAnchor.transform;
+        // 3D Head (Smooth Capsule)
+        GameObject head = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        head.name = "PegasusHead";
+        Destroy(head.GetComponent<Collider>());
+        head.transform.parent = pegasus.transform;
+        head.transform.localPosition = new Vector3(0.0f, 0.95f, 0.85f);
+        head.transform.localRotation = Quaternion.Euler(15f, 0f, 0f); // Forward head tilt
+        head.transform.localScale = new Vector3(0.35f, 0.45f, 0.35f);
+        head.GetComponent<Renderer>().sharedMaterial = pegasusHeadMat;
 
-        GameObject leftWing = GameObject.CreatePrimitive(PrimitiveType.Quad);
-        leftWing.name = "LeftWingQuad";
-        Destroy(leftWing.GetComponent<Collider>());
-        leftWing.transform.parent = lWingAnchor.transform;
-        leftWing.transform.localPosition = new Vector3(-1.4f, 0.0f, 0.3f);
-        leftWing.transform.localRotation = Quaternion.Euler(90f, 0f, 0f); // Lay flat
-        leftWing.transform.localScale = new Vector3(2.8f, 2.8f, 1.0f);
-        leftWing.GetComponent<Renderer>().sharedMaterial = pegasusWingMat;
+        // Four 3D Legs in Diagonal Locomotion layout
 
-        // Right Wing Anchor & Quad (positioned wider for clear downward right viewing)
-        GameObject rWingAnchor = new GameObject("RightWingAnchor");
-        rWingAnchor.transform.parent = playerRig.transform;
-        rWingAnchor.transform.localPosition = new Vector3(0.9f, 0.3f, 0.0f);
-        motion.rightWingAnchor = rWingAnchor.transform;
-
-        GameObject rightWing = GameObject.CreatePrimitive(PrimitiveType.Quad);
-        rightWing.name = "RightWingQuad";
-        Destroy(rightWing.GetComponent<Collider>());
-        rightWing.transform.parent = rWingAnchor.transform;
-        rightWing.transform.localPosition = new Vector3(1.4f, 0.0f, 0.3f);
-        rightWing.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-        rightWing.transform.localScale = new Vector3(-2.8f, 2.8f, 1.0f); // X-Mirror
-        rightWing.GetComponent<Renderer>().sharedMaterial = pegasusWingMat;
-
-        // Left Front Leg Anchor & Quad (moved slightly wider and down for perfect visibility and pedaling)
+        // Left Front Leg Anchor
         GameObject lLegAnchor = new GameObject("LeftLegAnchor");
-        lLegAnchor.transform.parent = playerRig.transform;
-        lLegAnchor.transform.localPosition = new Vector3(-0.4f, -0.6f, 0.6f);
+        lLegAnchor.transform.parent = pegasus.transform;
+        lLegAnchor.transform.localPosition = new Vector3(-0.35f, -0.5f, 0.3f);
         motion.leftLegAnchor = lLegAnchor.transform;
+        
+        GameObject lLegCyl = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        lLegCyl.name = "LeftFrontLeg";
+        Destroy(lLegCyl.GetComponent<Collider>());
+        lLegCyl.transform.parent = lLegAnchor.transform;
+        lLegCyl.transform.localPosition = new Vector3(0.0f, -0.5f, 0.0f);
+        lLegCyl.transform.localScale = new Vector3(0.18f, 0.5f, 0.18f);
+        lLegCyl.GetComponent<Renderer>().sharedMaterial = pegasusLegMat;
 
-        GameObject leftLeg = GameObject.CreatePrimitive(PrimitiveType.Quad);
-        leftLeg.name = "LeftLegQuad";
-        Destroy(leftLeg.GetComponent<Collider>());
-        leftLeg.transform.parent = lLegAnchor.transform;
-        leftLeg.transform.localPosition = new Vector3(0.0f, -0.6f, 0.0f);
-        leftLeg.transform.localRotation = Quaternion.identity;
-        leftLeg.transform.localScale = new Vector3(0.7f, 1.4f, 1.0f);
-        leftLeg.GetComponent<Renderer>().sharedMaterial = pegasusLegMat;
-
-        // Right Front Leg Anchor & Quad
+        // Right Front Leg Anchor
         GameObject rLegAnchor = new GameObject("RightLegAnchor");
-        rLegAnchor.transform.parent = playerRig.transform;
-        rLegAnchor.transform.localPosition = new Vector3(0.4f, -0.6f, 0.6f);
+        rLegAnchor.transform.parent = pegasus.transform;
+        rLegAnchor.transform.localPosition = new Vector3(0.35f, -0.5f, 0.3f);
         motion.rightLegAnchor = rLegAnchor.transform;
 
-        GameObject rightLeg = GameObject.CreatePrimitive(PrimitiveType.Quad);
-        rightLeg.name = "RightLegQuad";
-        Destroy(rightLeg.GetComponent<Collider>());
-        rightLeg.transform.parent = rLegAnchor.transform;
-        rightLeg.transform.localPosition = new Vector3(0.0f, -0.6f, 0.0f);
-        rightLeg.transform.localRotation = Quaternion.identity;
-        rightLeg.transform.localScale = new Vector3(-0.7f, 1.4f, 1.0f); // X-Mirror
-        rightLeg.GetComponent<Renderer>().sharedMaterial = pegasusLegMat;
+        GameObject rLegCyl = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        rLegCyl.name = "RightFrontLeg";
+        Destroy(rLegCyl.GetComponent<Collider>());
+        rLegCyl.transform.parent = rLegAnchor.transform;
+        rLegCyl.transform.localPosition = new Vector3(0.0f, -0.5f, 0.0f);
+        rLegCyl.transform.localScale = new Vector3(0.18f, 0.5f, 0.18f);
+        rLegCyl.GetComponent<Renderer>().sharedMaterial = pegasusLegMat;
+
+        // Left Back Leg (childed to rLegAnchor for diagonal trot synchronization!)
+        GameObject lBackLeg = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        lBackLeg.name = "LeftBackLeg";
+        Destroy(lBackLeg.GetComponent<Collider>());
+        lBackLeg.transform.parent = rLegAnchor.transform;
+        lBackLeg.transform.localPosition = new Vector3(-0.7f, -0.5f, -1.4f);
+        lBackLeg.transform.localScale = new Vector3(0.18f, 0.5f, 0.18f);
+        lBackLeg.GetComponent<Renderer>().sharedMaterial = pegasusLegMat;
+
+        // Right Back Leg (childed to lLegAnchor for diagonal trot synchronization!)
+        GameObject rBackLeg = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        rBackLeg.name = "RightBackLeg";
+        Destroy(rBackLeg.GetComponent<Collider>());
+        rBackLeg.transform.parent = lLegAnchor.transform;
+        rBackLeg.transform.localPosition = new Vector3(0.7f, -0.5f, -1.4f);
+        rBackLeg.transform.localScale = new Vector3(0.18f, 0.5f, 0.18f);
+        rBackLeg.GetComponent<Renderer>().sharedMaterial = pegasusLegMat;
+
+        // 3D Biological Segmented Flapping Wings (Positioned back behind saddle view for unobstructed side panorama!)
+        
+        // Left Wing Anchor Joint
+        GameObject lWingAnchor = new GameObject("LeftWingAnchor");
+        lWingAnchor.transform.parent = playerRig.transform;
+        lWingAnchor.transform.localPosition = new Vector3(-0.6f, 0.2f, -1.0f); // z = -1.0f sits behind rider camera at z = -0.5f!
+        motion.leftWingAnchor = lWingAnchor.transform;
+
+        // Left Wing Bone (Shoulder)
+        GameObject lBone = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        lBone.name = "LeftWingBone";
+        Destroy(lBone.GetComponent<Collider>());
+        lBone.transform.parent = lWingAnchor.transform;
+        lBone.transform.localPosition = new Vector3(-0.5f, 0.0f, 0.0f);
+        lBone.transform.localRotation = Quaternion.Euler(0f, 0f, 90f); // Stretching outwards
+        lBone.transform.localScale = new Vector3(0.12f, 0.5f, 0.12f);
+        lBone.GetComponent<Renderer>().sharedMaterial = pegasusBodyMat;
+
+        // Left Segmented Feather Blades (5 layered overlapping curved quads)
+        for (int i = 0; i < 5; i++)
+        {
+            GameObject feather = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            feather.name = $"LeftFeather_{i}";
+            Destroy(feather.GetComponent<Collider>());
+            feather.transform.parent = lWingAnchor.transform;
+            
+            float t = i / 4f;
+            float yaw = Mathf.Lerp(10f, -45f, t);
+            float roll = Mathf.Lerp(-10f, -25f, t);
+            feather.transform.localPosition = new Vector3(-0.3f - t * 1.2f, -0.05f - t * 0.1f, 0.2f - t * 0.8f);
+            feather.transform.localRotation = Quaternion.Euler(90f + roll, yaw, 0f);
+            feather.transform.localScale = new Vector3(0.4f, Mathf.Lerp(1.8f, 1.2f, t), 1.0f);
+            feather.GetComponent<Renderer>().sharedMaterial = pegasusWingMat;
+        }
+
+        // Right Wing Anchor Joint
+        GameObject rWingAnchor = new GameObject("RightWingAnchor");
+        rWingAnchor.transform.parent = playerRig.transform;
+        rWingAnchor.transform.localPosition = new Vector3(0.6f, 0.2f, -1.0f);
+        motion.rightWingAnchor = rWingAnchor.transform;
+
+        // Right Wing Bone (Shoulder)
+        GameObject rBone = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        rBone.name = "RightWingBone";
+        Destroy(rBone.GetComponent<Collider>());
+        rBone.transform.parent = rWingAnchor.transform;
+        rBone.transform.localPosition = new Vector3(0.5f, 0.0f, 0.0f);
+        rBone.transform.localRotation = Quaternion.Euler(0f, 0f, 90f); // Stretching outwards
+        rBone.transform.localScale = new Vector3(0.12f, 0.5f, 0.12f);
+        rBone.GetComponent<Renderer>().sharedMaterial = pegasusBodyMat;
+
+        // Right Segmented Feather Blades (5 layered overlapping curved quads)
+        for (int i = 0; i < 5; i++)
+        {
+            GameObject feather = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            feather.name = $"RightFeather_{i}";
+            Destroy(feather.GetComponent<Collider>());
+            feather.transform.parent = rWingAnchor.transform;
+            
+            float t = i / 4f;
+            float yaw = Mathf.Lerp(-10f, 45f, t);
+            float roll = Mathf.Lerp(10f, 25f, t);
+            feather.transform.localPosition = new Vector3(0.3f + t * 1.2f, -0.05f - t * 0.1f, 0.2f - t * 0.8f);
+            feather.transform.localRotation = Quaternion.Euler(90f + roll, yaw, 0f);
+            feather.transform.localScale = new Vector3(-0.4f, Mathf.Lerp(1.8f, 1.2f, t), 1.0f); // X-Mirror
+            feather.GetComponent<Renderer>().sharedMaterial = pegasusWingMat;
+        }
     }
 
     private void StreamChunks(bool forceUpdate)

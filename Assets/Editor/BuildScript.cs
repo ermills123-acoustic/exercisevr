@@ -69,9 +69,10 @@ public class BuildScript
         PlayerSettings.productName = "PegasusVR";
         PlayerSettings.applicationIdentifier = "com.eddiemills.pegasusvr";
         PlayerSettings.defaultInterfaceOrientation = UIOrientation.LandscapeLeft;
+        PlayerSettings.bundleVersion = "1.3.0";
+        PlayerSettings.Android.bundleVersionCode = 13;
         PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26; // Android 8.0
         PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevelAuto; // Auto detect highest installed SDK
-
         
         // Disable Auto Graphics API so Unity respects our GLES3 selection and compiles without Vulkan (preventing Google Cardboard crash on start!)
         PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android, false);

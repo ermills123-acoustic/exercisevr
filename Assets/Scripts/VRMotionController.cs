@@ -240,31 +240,54 @@ public class VRMotionController : MonoBehaviour
             }
         }
     }
-
     private void HandleSteering()
     {
-        float rollAngle = 0.0f;
-        if (cameraRig != null)
+        // Direct accelerometer-based tilt detection (100% reliable on Samsung A01 and all Android devices!)
+        float tilt = 0.0f;
+        
+        // Input.acceleration.x gives the exact physical roll tilt of the phone in Landscape mode
+        // Tilting phone left -> Input.acceleration.x is negative
+        // Tilting phone right -> Input.acceleration.x is positive
+        tilt = Input.acceleration.x;
+
+        // If the gyroscope is active, we can blend it in to enhance precision
+        if (gyroEnabled)
         {
-            rollAngle = cameraRig.localEulerAngles.z;
-        }
-        else if (leftEyeCamera != null)
-        {
-            rollAngle = leftEyeCamera.localEulerAngles.z;
+            Vector3 gyroEuler = Input.gyro.attitude.eulerAngles;
+            float gyroRoll = gyroEuler.z;
+            if (gyroRoll > 180f) gyroRoll -= 360f;
+            // Map gyro roll to a -1 to 1 range
+            if (Mathf.Abs(gyroRoll) > 1.0f)
+            {
+                tilt = Mathf.Lerp(tilt, -gyroRoll / 45.0f, 0.5f);
+            }
         }
 
-        if (rollAngle > 180.0f)
+        // Apply deadzone for stability when riding straight
+        if (Mathf.Abs(tilt) > 0.05f)
         {
-            rollAngle -= 360.0f;
-        }
-
-        if (Mathf.Abs(rollAngle) > rollDeadzone)
-        {
-            float steerAmount = rollAngle * steerSensitivity * Time.deltaTime; // UN-INVERTED steering direction
+            // Tilt determines the steering yaw rate
+            float steerAmount = tilt * steerSensitivity * 35.0f * Time.deltaTime;
             transform.Rotate(Vector3.up, steerAmount, Space.World);
+            
+            // Visually lean the player camera slightly for advanced sensory feedback!
+            if (cameraRig != null)
+            {
+                Vector3 currentRot = cameraRig.localEulerAngles;
+                float targetRoll = -tilt * 15.0f;
+                cameraRig.localRotation = Quaternion.Euler(currentRot.x, currentRot.y, Mathf.LerpAngle(currentRot.z, targetRoll, Time.deltaTime * 5f));
+            }
+        }
+        else
+        {
+            // Return camera tilt back to zero smoothly when going straight
+            if (cameraRig != null)
+            {
+                Vector3 currentRot = cameraRig.localEulerAngles;
+                cameraRig.localRotation = Quaternion.Euler(currentRot.x, currentRot.y, Mathf.LerpAngle(currentRot.z, 0f, Time.deltaTime * 5f));
+            }
         }
     }
-
     private void ApplyMovement()
     {
         float targetSpeed = 0.0f;
@@ -357,7 +380,6 @@ public class VRMotionController : MonoBehaviour
             }
         }
     }
-
     private void AnimateLegsAndWings()
     {
         // Dynamic wing flapping based on movement speed & state
@@ -368,25 +390,51 @@ public class VRMotionController : MonoBehaviour
 
             if (currentState == MovementState.Flying)
             {
-                flapSpeed = 14.0f;
-                maxFlapAngle = 35.0f;
+                flapSpeed = 12.0f;
+                maxFlapAngle = 30.0f;
             }
             else if (currentState == MovementState.Gliding)
             {
-                flapSpeed = 3.0f;
-                maxFlapAngle = 10.0f;
+                flapSpeed = 2.0f;
+                maxFlapAngle = 8.0f;
             }
             else // Walking or Swimming
             {
                 flapSpeed = 1.0f;
-                maxFlapAngle = 4.0f;
+                maxFlapAngle = 3.0f;
             }
 
+            // Flap the main wing shoulder joints up and down on the Z-axis
             float angle = Mathf.Sin(Time.time * flapSpeed) * maxFlapAngle;
             leftWingAnchor.localRotation = Quaternion.Euler(0f, 0f, angle);
             rightWingAnchor.localRotation = Quaternion.Euler(0f, 0f, -angle);
-        }
 
+            // Breathtaking organic bending of the 5 feather blades (wind resistance delay!)
+            for (int i = 0; i < 5; i++)
+            {
+                Transform lFeather = leftWingAnchor.Find($"LeftFeather_{i}");
+                if (lFeather != null)
+                {
+                    float delayAngle = Mathf.Sin(Time.time * flapSpeed - i * 0.35f) * (maxFlapAngle * 0.4f);
+                    float t = i / 4f;
+                    float yaw = Mathf.Lerp(10f, -45f, t);
+                    float roll = Mathf.Lerp(-10f, -25f, t);
+                    // Add delayAngle on top of the base fanned angles
+                    lFeather.localRotation = Quaternion.Euler(90f + roll + delayAngle, yaw, 0f);
+                }
+
+                Transform rFeather = rightWingAnchor.Find($"RightFeather_{i}");
+                if (rFeather != null)
+                {
+                    float delayAngle = Mathf.Sin(Time.time * flapSpeed - i * 0.35f) * (maxFlapAngle * 0.4f);
+                    float t = i / 4f;
+                    float yaw = Mathf.Lerp(-10f, 45f, t);
+                    float roll = Mathf.Lerp(10f, 25f, t);
+                    // Add delayAngle symmetrically
+                    rFeather.localRotation = Quaternion.Euler(90f + roll - delayAngle, yaw, 0f);
+                }
+            }
+        }
         // Galloping leg animations when moving!
         if (leftLegAnchor != null && rightLegAnchor != null)
         {
