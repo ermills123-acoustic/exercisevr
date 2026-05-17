@@ -14,20 +14,18 @@ public class BuildScript
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         scene.name = "MainScene";
 
-        // 2. Spawn EnvironmentBuilder and generate the scene
+        // 2. Spawn EnvironmentBuilder and set it to generate dynamically at runtime
         GameObject gm = new GameObject("GameManager");
         EnvironmentBuilder builder = gm.AddComponent<EnvironmentBuilder>();
-        builder.generateOnStart = false; // Disable generation on Start since we're baking it now
+        builder.generateOnStart = true; // Dynamically build at runtime on the device for flawless asset serialization!
 
-        // Load and assign textures via AssetDatabase so they are permanently serialized in the scene
+        // Load and assign textures via AssetDatabase so they are permanently serialized in the scene GameManager component
         builder.farmlandTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/farmland_texture.png");
         builder.oceanTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/ocean_texture.png");
         builder.roadTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/road_texture.png");
         builder.wallTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/house_wall.png");
         builder.roofTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/house_roof.png");
         builder.barkTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/bark_texture.png");
-
-        builder.BuildAll();
 
         // 3. Save the scene
         string scenePath = "Assets/Scenes/MainScene.unity";

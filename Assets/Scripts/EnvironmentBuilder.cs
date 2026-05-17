@@ -77,6 +77,8 @@ public class EnvironmentBuilder : MonoBehaviour
 
     private void InitializeMaterials()
     {
+        if (farmlandMaterial != null) return;
+
         // Fallbacks using procedural texture generators
         Texture2D leavesTex = ProceduralTextureHelper.GenerateLeavesTexture();
 
